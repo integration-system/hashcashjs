@@ -1,8 +1,6 @@
 import {describe, expect, jest, test} from '@jest/globals';
 import {mint} from "./index";
 
-global.crypto = require('crypto').webcrypto;
-
 
 jest.setTimeout(30000)
 

@@ -1,6 +1,6 @@
 {
   "name": "hashcashjs",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Simple implementation Hashcash for browsers",
   "main": "lib/index.js",
   "files": [
@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "big-integer": "^1.6.51",
+    "crypto-js": "^4.1.1",
     "js-base64": "^3.7.5"
   }
 }

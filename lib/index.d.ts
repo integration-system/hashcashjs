@@ -5,10 +5,10 @@ declare class Stamp {
     date: Date;
     resource: string;
     extension: string;
-    rand: Uint8Array;
+    rand: string;
     counter: bigInt.BigInteger;
     header?: string;
-    constructor(bits: number, date: Date, resource: string, rand: Uint8Array);
+    constructor(bits: number, date: Date, resource: string, rand: string);
     check(): Promise<boolean>;
     digest(): string;
 }

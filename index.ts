@@ -1,4 +1,5 @@
-import {fromUint8Array, toBase64} from "js-base64";
+import {toBase64, toUint8Array} from "js-base64";
+import {SHA1, enc, lib} from "crypto-js"
 import * as bigInt from "big-integer";
 
 class Stamp {
@@ -7,11 +8,11 @@ class Stamp {
     date: Date
     resource: string
     extension: string
-    rand: Uint8Array
+    rand: string
     counter: bigInt.BigInteger
     header?: string
 
-    constructor(bits: number, date: Date, resource: string, rand: Uint8Array) {
+    constructor(bits: number, date: Date, resource: string, rand: string) {
         this.version = "1"
         this.bits = bits
         this.date = date
@@ -22,15 +23,15 @@ class Stamp {
     }
 
     async check(): Promise<boolean> {
-        const msgUint8 = new TextEncoder().encode(this.digest())
-        const hash = await crypto.subtle.digest("SHA-1", msgUint8)
-        const leadingZeros = countLeadingZeros(hash)
+        const sha1 = SHA1(this.digest())
+        const hash = sha1.toString(enc.Base64);
+        const leadingZeros = countLeadingZeros(toUint8Array(hash))
         return leadingZeros >= this.bits
     }
 
     digest(): string {
         if (!this.header) {
-            this.header = `${this.version}:${this.bits}:${formatDate(this.date)}:${this.resource}:${this.extension}:${fromUint8Array(this.rand)}`
+            this.header = `${this.version}:${this.bits}:${formatDate(this.date)}:${this.resource}:${this.extension}:${this.rand}`
         }
         return `${this.header}:${toBase64(this.counter.toString())}`
     }
@@ -65,8 +66,7 @@ function formatDate(date: Date) {
 }
 
 async function mint(bits: number, resource: string): Promise<string> {
-    let rnd = new Uint8Array(8)
-    rnd = crypto.getRandomValues(rnd)
+    const rnd = lib.WordArray.random(8).toString(enc.Base64);
 
     const s = new Stamp(bits, new Date(), resource, rnd)
     while(true) {

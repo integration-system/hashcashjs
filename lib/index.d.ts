@@ -9,7 +9,7 @@ declare class Stamp {
     counter: bigInt.BigInteger;
     header?: string;
     constructor(bits: number, date: Date, resource: string, rand: string);
-    check(): Promise<boolean>;
+    check(): boolean;
     digest(): string;
 }
 declare function mint(bits: number, resource: string): Promise<string>;

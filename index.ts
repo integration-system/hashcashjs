@@ -1,5 +1,5 @@
-import {toBase64, toUint8Array} from "js-base64";
-import {SHA1, enc, lib} from "crypto-js"
+import {toBase64} from "js-base64";
+import {enc, lib, SHA1} from "crypto-js"
 import * as bigInt from "big-integer";
 
 class Stamp {
@@ -22,10 +22,10 @@ class Stamp {
         this.counter = bigInt(0)
     }
 
-    async check(): Promise<boolean> {
+    check(): boolean {
         const sha1 = SHA1(this.digest())
-        const hash = sha1.toString(enc.Base64);
-        const leadingZeros = countLeadingZeros(toUint8Array(hash))
+        const buff = cryptJsWordArrayToUint8Array(sha1)
+        const leadingZeros = countLeadingZeros(buff)
         return leadingZeros >= this.bits
     }
 
@@ -37,8 +37,31 @@ class Stamp {
     }
 }
 
-function countLeadingZeros(arr: ArrayBuffer): number {
-    const buff = new Uint8Array(arr)
+function cryptJsWordArrayToUint8Array(wordArray): Uint8Array {
+    const l = wordArray.sigBytes;
+    const words = wordArray.words;
+    const result = new Uint8Array(l);
+    let i = 0 /*dst*/, j = 0 /*src*/;
+    while (true) {
+        // here i is a multiple of 4
+        if (i == l)
+            break;
+        let w = words[j++];
+        result[i++] = (w & 0xff000000) >>> 24;
+        if (i == l)
+            break;
+        result[i++] = (w & 0x00ff0000) >>> 16;
+        if (i == l)
+            break;
+        result[i++] = (w & 0x0000ff00) >>> 8;
+        if (i == l)
+            break;
+        result[i++] = (w & 0x000000ff);
+    }
+    return result;
+}
+
+function countLeadingZeros(buff: Uint8Array): number {
     let leadingZeros = 0;
     for (let i = 0; i < buff.length; i++) {
         if (buff[i] === 0) {
@@ -46,7 +69,7 @@ function countLeadingZeros(arr: ArrayBuffer): number {
             continue
         }
         for (let j = 8; j > 0; j--) {
-            if (!test(buff[i], j-1)) {
+            if (!test(buff[i], j - 1)) {
                 leadingZeros++
             } else {
                 return leadingZeros
@@ -56,26 +79,33 @@ function countLeadingZeros(arr: ArrayBuffer): number {
     return leadingZeros
 }
 
-function test(num, bit){
-    return (num>>bit) % 2 !== 0
+function test(num, bit) {
+    return (num >> bit) % 2 !== 0
 }
 
 function formatDate(date: Date) {
     const d = date.toISOString()
-    return d.slice(0,19).replace(/[-:T]/g,"")
+    return d.slice(0, 19).replace(/[-:T]/g, "")
 }
 
 async function mint(bits: number, resource: string): Promise<string> {
     const rnd = lib.WordArray.random(8).toString(enc.Base64);
 
     const s = new Stamp(bits, new Date(), resource, rnd)
-    while(true) {
-        const ok = await s.check()
-        if (ok) {
-            return s.digest()
+    return new Promise((resolve) => {
+        function round() {
+            for (let i = 0; i < 1000; i++) {
+                if (s.check()) {
+                    resolve(s.digest());
+                    return
+                }
+                s.counter = s.counter.add(bigInt.one)
+            }
+            setTimeout(round, 0);
         }
-        s.counter = s.counter.add(bigInt.one)
-    }
+
+        round();
+    });
 }
 
 export {
